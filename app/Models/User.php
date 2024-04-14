@@ -3,12 +3,15 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Session;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable;
 
@@ -55,5 +58,30 @@ class User extends Authenticatable
         $table->boolean('administrator')->default(false);
         $table->rememberToken();
         $table->timestamps();
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        $panelId = $panel->getId();
+
+        switch ($panelId) {
+            case 'admin':
+                if ($this->administrator) return true;
+                return false;
+            case 'app':
+                if ($this->administrator) return true;
+                $tenant = Session::get('tenant');
+
+                if ($tenant instanceof  Tenant) {
+                    if ($this->id === $tenant->owner_id) {
+                        return true;
+                    }
+
+                }
+
+                return false;
+            default:
+                return false;
+        }
     }
 }
